@@ -31,7 +31,7 @@ app.use(session(
 }));
 app.use(passport.initialize());
 app.use(passport.session());
-app.use(express.static(__dirname + '/../build'));
+//app.use(express.static(__dirname + '/../build'));
 
 passport.use(new Auth0Strategy(
 {
@@ -71,21 +71,43 @@ passport.serializeUser(function(id, done)
     return done(null, id);
 });
 
-passport.deserializeUser(function(id, done)
+passport.deserializeUser((id, done) =>
 {
     //runs before any endpoints are hit
     //grabs info from session store
     //puts that info on the req.user object
-    return done(null, id);
+    app.get('db').find_session_user([id]).then(user => 
+    {
+        done(null, user[0]);
+    });
 });
 
 app.get('/auth', passport.authenticate('auth0'));
 
 app.get('/auth/callback', passport.authenticate('auth0', 
 {
-    successRedirect: 'http:/localhost:3000',
+    successRedirect: 'http://localhost:3000/#/private',
     failureRedirect: 'http://localhost:3000'
 }));
+
+//if req.user is undefined - no one is logged in
+app.get('/auth/me', (req, res) =>
+{
+    if (req.user)
+    {
+        res.status(200).send(req.user);
+    }
+    else
+    {
+        res.status(401).send('No one is logged in cheaterface');
+    }
+});
+app.get('/logout', (req, res) =>
+{
+    req.logOut();
+    res.redirect('http://localhost:3000');
+});
+
 
 app.listen(SERVER_PORT, () => 
 {
